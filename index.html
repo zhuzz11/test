@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>测试canvas</title>
+    <style>
+      .sign-directive * {
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+      }
+
+      .sign-directive {
+        background-color: #f5f5f5;
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        transform: translate3d(0%, 0px, 0px);
+      }
+
+      .sign-directive {
+        -webkit-transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
+        -webkit-transition-duration: 300ms;
+        transition-duration: 300ms;
+        z-index: 1001;
+      }
+
+      .sign-directive .signature-content {
+        transform: rotate(90deg);
+        -moz-transform: rotate(90deg);
+        -webkit-transform: rotate(90deg);
+        position: absolute;
+      }
+
+      .sign-directive .signature-content .btn-bottom {
+        position: absolute;
+        bottom: 10px;
+        width: 100%;
+      }
+
+      .sign-directive .btn-bottom {
+        padding: 0;
+      }
+
+      .sign-directive .text-center {
+        text-align: center;
+      }
+
+      .sign-directive .signature-content .btn-cancel {
+        border: 1px solid #a0a0a0;
+        border-radius: 3px;
+        color: #454545;
+        background-color: #f5f5f5;
+        margin-right: 25px;
+      }
+
+      .sign-directive .signature-content button {
+        min-width: 100px;
+        padding: 10px;
+        font-weight: 600 !important;
+      }
+
+      .sign-directive .signature-content button:active {
+        opacity: 0.6;
+      }
+
+      .sign-directive .signature-content .btn-save-sign {
+        border: none;
+        border-radius: 3px;
+        color: #fff;
+        margin-right: 25px;
+        background-color: #296aff;
+      }
+
+      .sign-directive .signature-content .btn-clear {
+        border: none;
+        border-radius: 3px;
+        color: #fff;
+        background-color: #95ce0c;
+      }
+    </style>
+    <script src="https://cdn.bootcss.com/jquery/1.12.4/jquery.min.js"></script>
+  </head>
+  <body>
+    <div class="sign-directive signature-page">
+      <div class="signature-content">
+        <div>
+          <canvas class="ct-canvas" id="myCanvas" ng-show="isShow"></canvas>
+        </div>
+        <div class="btn-bottom text-center">
+          
+          <button class="btn-save-sign" type="button" onclick="saveImg()">
+            完成
+          </button>
+          <button class="btn-clear" type="button" onclick="clear();">
+            清空
+          </button>
+        </div>
+      </div>
+    </div>
+    <script>
+      /**
+       * Created by Administrator on 2017/6/15.
+       */
+
+       //获取url上面的参数
+window.getQueryString = function(name) {
+    var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+    var r = window.location.search.substr(1).match(reg);
+    if (r != null){
+        return unescape(r[2]);
+    }
+    return null;
+};
+
+      var scope = {};
+      scope.isShow = true;
+      scope.isNoSign = true;
+      scope.orderCode = "";
+      scope.init = function(isNoSign, orderCode, image) {
+        scope.clear();
+        scope.isNoSign = isNoSign;
+        scope.orderCode = orderCode;
+        if (!scope.isNoSign) {
+          convertImageToCanvas(image);
+        }
+      };
+      saveImg = function() {
+        
+              saveSignImg();
+         
+      };
+
+      var dataURLtoFile = function(dataURL) {
+        try{
+          var blobBin = atob(dataURL.split(",")[1]);
+        }catch(e){
+          alert("atob转换图片失败!");
+        }
+        var array = [];
+        for (var i = 0; i < blobBin.length; i++) {
+          try{
+            array.push(blobBin.charCodeAt(i));
+          }catch(e){
+            alert("charCodeAt转换图片失败!");
+          }
+          
+        }
+        try{
+          var a = new Blob();
+        }catch(e){
+            alert("Blob转换图片失败!");
+          }
+        try{
+          var file = new Blob([new Uint8Array(array)], { type: "image/png" });
+          }catch(e){
+            alert("Uint8Array转换图片失败!");
+          }
+        
+        return file;
+      };
+
+      var saveSignImg = function() {
+        var canvas = document.getElementById("myCanvas");
+        var now = new Date().getTime();
+        var userId = getQueryString("userId") || "";
+        var S4 = function() {
+          return (((1 + Math.random()) * 0x10000) | 0)
+            .toString(16)
+            .substring(1);
+        };
+        var guid = function() {
+          return (
+            S4() +
+            S4() +
+            "-" +
+            S4() +
+            "-" +
+            S4() +
+            "-" +
+            S4() +
+            "-" +
+            S4() +
+            S4() +
+            S4()
+          );
+        };
+        var filename = "appqm" + userId + guid() + now + ".png";
+        alert("开始检测")
+        try {
+          //   canvas.toBlob(function(blob) {  不使用toBlob，防止低版本浏览器不兼容，转换报错
+          //     if (!blob) {
+          //       popupService.fail("转换图片失败！您可点击右上角“签名”试试。");
+          //       return;
+          //     }
+          dataURLtoFile(canvas.toDataURL("image/png"));
+             
+          //  }, 'image/png');
+        } catch (e) {
+          alert("toDataURL转换图片失败");
+        }
+      };
+
+      // 上传图片失败可以多次请求
+      scope.uploadImg = function(param, body) {
+        $apis.uploadImageToCos.send(param, body).then(
+          function(data) {
+            console.log(data);
+            if (data.resultCode === "0000") {
+              var body = {
+                orderCode: scope.orderCode,
+                signaturePath: data.resultObject.url,
+                signatureResult: "3"
+              };
+              $apis.saveOrUpdateSignaturePath
+                .send(null, body)
+                .then(function(data) {
+                  if (data.code == "success") {
+                    popupService.success("上传签名成功!");
+                    scope.hideSign();
+                    scope.callback(); //调用controller的回调函数，去获取签名图片
+                  } else {
+                    popupService.fail(data && data.resultMsg);
+                  }
+                });
+            } else {
+              popupService.fail("上传签名失败！您可点击右上角“签名”试试。");
+            }
+          },
+          function(error) {
+            popupService.fail("上传签名失败！您可点击右上角“签名”试试。");
+          }
+        );
+      };
+
+      scope.hideSign = function() {
+        $(".sign-directive").css("visibility", "hidden");
+      };
+
+      // 上传图片处理
+      var canvas, board, img;
+      var isNoBlank = false;
+      var init = (function() {
+        var signObj = $(".signature-page");
+        var signConObj = $(".signature-content");
+
+        signConObj.height(signObj.width());
+        signConObj.width(signObj.height());
+        var lh = Math.abs(signConObj.height() - signConObj.width()) / 2;
+        signConObj.css("left", -lh);
+        signConObj.css("top", lh);
+
+        canvas = document.getElementById("myCanvas");
+
+        var height = signConObj.height();
+        var width = signConObj.width();
+
+        canvas.width = width;
+        canvas.height = height;
+
+        board = canvas.getContext("2d");
+
+        var mousePress = false;
+        var last = null;
+
+        function beginDraw(event) {
+          mousePress = true;
+        }
+
+        function drawing(event) {
+          event.preventDefault();
+          if (!mousePress) return;
+          var xy = pos(event);
+          if (last != null) {
+            board.beginPath();
+            board.moveTo(last.x, last.y);
+            board.lineTo(xy.x, xy.y);
+            board.stroke();
+          }
+          last = xy;
+          isNoBlank = true;
+        }
+
+        function endDraw(event) {
+          mousePress = false;
+          event.preventDefault();
+          last = null;
+        }
+
+        function pos(e) {
+          var x, y;
+          var event =
+            e.changedTouches && e.changedTouches.length > 0
+              ? e.changedTouches[0]
+              : e;
+          x = event.pageX;
+          y = event.pageY;
+          return {
+            x: y,
+            y: signConObj.height() - x
+          };
+        }
+
+        function isTouch(event) {
+          var type = event.type;
+          if (type.indexOf("touch") >= 0) {
+            return true;
+          } else {
+            return false;
+          }
+        }
+
+        function clean() {
+          board.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        board.fillStyle = "#fff";
+        board.fillRect(0, 0, canvas.width, canvas.height);
+        board.lineWidth = 6;
+        board.strokeStyle = "#0000ff";
+
+        /*canvas.onmousedown = beginDraw;
+                    canvas.onmousemove = drawing;
+                    canvas.onmouseup = endDraw;*/
+
+        if (canvas.addEventListener) {
+          canvas.addEventListener("touchstart", beginDraw, false);
+          canvas.addEventListener("touchmove", drawing, false);
+          canvas.addEventListener("touchend", endDraw, false);
+        } else {
+          canvas.ontouchstart = beginDraw;
+          canvas.ontouchmove = drawing;
+          canvas.ontouchend = endDraw;
+        }
+      })();
+
+      clear = function() {
+        board.clearRect(0, 0, canvas.width, canvas.height);
+        board.fillStyle = "#fff";
+        board.fillRect(0, 0, canvas.width, canvas.height);
+        isNoBlank = false;
+      };
+
+      // Converts image to canvas; returns new canvas element
+      var convertImageToCanvas = function(image) {
+        var canvas = document.getElementById("myCanvas");
+        /*canvas.width = image.width;
+                    canvas.height = image.height;*/
+        canvas.getContext("2d").drawImage(image, 0, 0);
+
+        return canvas;
+      };
+    </script>
+  </body>
+</html>
